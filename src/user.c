@@ -21,6 +21,8 @@ long childSeconds, childNanoseconds, totalChildTime, childMaxRunTime;
 void signalHandler(int);
 pid_t childpid;
 int childCount = 0;
+char *semName;
+
 
 int randomNumberGenerator(int min, int max)
 {
@@ -29,7 +31,7 @@ int randomNumberGenerator(int min, int max)
 
 int main (int argc, char *argv[]) {
 
-int i;
+//int i;
 //for ( i = 0; i < argc; i++) 
 //        fprintf(stderr, "%d \n", argv[i] ); 
 
@@ -37,7 +39,9 @@ childpid = getpid();
 //fprintf(stderr, "Child Created \n Child started execution in  worker::: %ld \n", childpid);
 //fprintf(stderr, "*******************************************\n");
 
-while((x = getopt(argc,argv, "n:s:j:")) != -1)
+//fprintf(stderr, "Child with pid ######## %d \n", childpid);
+
+while((x = getopt(argc,argv, "n:s:j:k:")) != -1)
 switch(x)
 {
 case 'n': 
@@ -50,6 +54,9 @@ case 's':
 
 case 'j': 
 	shmMsgId = atoi(optarg);
+	break;
+case 'k':
+	semName = optarg;
 	break;
 case '?':
         fprintf(stderr, "Invalid Arguments \n");
@@ -73,58 +80,46 @@ if(userClock == (void *) -1)
 	exit(1);
 }
 
- fprintf(stderr, "User Running \n");
-//fprintf(stderr, "%d \n", sem_init(mySemaphore, 0,1));
-mySemaphore = sem_open ("pSem", O_CREAT | O_EXCL, 0666, 1); 
-fprintf(stderr, " Semaphore Initialization Success! \n");
-sem_unlink ("pSem");
+mySemaphore = sem_open (semName , 0); 
+//sem_unlink(semName);
 
 srand(time(NULL));
 int randomnumber = randomNumberGenerator(1,1000000);
-childSeconds = clock -> seconds * NANOSECOND;
-childNanoseconds = clock -> nanoseconds;
 
-totalChildTime = childSeconds + childNanoseconds; 
+//childSeconds = clock -> seconds * NANOSECOND;
+//childNanoseconds = clock -> nanoseconds;
+
+totalChildTime = (clock -> seconds * NANOSECOND) + clock -> nanoseconds; 
 childMaxRunTime = totalChildTime + randomnumber;
 
-fprintf(stderr, "---------Child Max Run Time %d-------------- \n", childMaxRunTime);
+fprintf(stderr, "---------Child %d  Max Run Time %d-------------- \n", getpid(),childMaxRunTime);
 
-if(sem_wait(mySemaphore) == -1)
+while(1)
 {
-	perror("Error in Wait function of Semaphore \n");
-	return 1;
-}
-
-//while(1)
-//{
-	fprintf(stderr, "Child Entered Critical Section %d  \n", childpid);
-	if(((clock -> seconds * NANOSECOND) + clock -> nanoseconds) >= childMaxRunTime)
+	sem_wait(mySemaphore);
+	//sem_getvalue(mySemaphore,&sem_value);
+	//fprintf(stderr, "After Sem Wait %d \n", sem_value);
+	fprintf(stderr, "Passed Wait %d \n", getpid());
+	 if(((clock -> seconds * NANOSECOND) + clock -> nanoseconds) >= childMaxRunTime)
 	{
-		fprintf(stderr, "#####################################################Inside while Loop \n");
-		if(userClock -> inUse == 0)
+		fprintf(stderr, "########################################################### %d Inside Critical Section \n", getpid());
+		if(userClock -> childpid == -1)
 		{
-			userClock -> inUse = 1;
 			userClock -> childpid = getpid();
-			userClock -> seconds = clock -> seconds;
-			userClock -> nanoseconds = clock -> nanoseconds;
+			userClock -> seconds = childMaxRunTime/ NANOSECOND;
+			userClock -> nanoseconds = childMaxRunTime % NANOSECOND;
+		        fprintf(stderr, "******************************************************  %d Exiting Critical Section \n", getpid());
+			sem_post(mySemaphore);
+			break;
 		}
-	//	else 
-	//	break;						
-	}
-//}
-
-
-if(sem_post(mySemaphore) == -1)
-{
-	perror("Error in Signal Of Semaphore \n");
-	return 1;
+	} 
+	// fprintf(stderr,"%d Inside Critical Section \n", getpid());
+	sem_post(mySemaphore);
+	//sem_getvalue(mySemaphore,&sem_value);
+        //fprintf(stderr, "After Sem Post %d \n", sem_value);
+	//fprintf(stderr, "Error in Unlocking Semaphore \n");
 }
 
-//sem_destroy(mySemaphore);
-//fprintf(stderr, "Worker Clock Update ");
-fprintf(stderr, "Master Clock Seconds %d, Nano Seconds %d \n", clock -> seconds, clock -> nanoseconds);
-fprintf(stderr, "User  Seconds %d, User Nano seconds %d \n" ,userClock -> seconds, userClock -> nanoseconds);
-fprintf(stderr, "Child Done Execution from worker with %ld \n", childpid);
-fprintf(stderr, "------------------------------------------------ \n");
+
 return 0;
 }
