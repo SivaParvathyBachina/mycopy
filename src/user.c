@@ -17,7 +17,7 @@ shared_mem *clock;
 shmMsg *userClock;
 int shmId,shmMsgId, x, processNumber,n;
 sem_t *mySemaphore;
-long childSeconds, childNanoseconds, totalChildTime, childMaxRunTime;
+long int childSeconds, childNanoseconds, totalChildTime, childMaxRunTime;
 void signalHandler(int);
 pid_t childpid;
 int childCount = 0;
@@ -26,7 +26,7 @@ char *semName;
 
 int randomNumberGenerator(int min, int max)
 {
-        return ((rand() % (max-min +1)) + min);
+        return (rand()%(max-min +1)) + min;
 }
 
 int main (int argc, char *argv[]) {
@@ -81,45 +81,30 @@ if(userClock == (void *) -1)
 }
 
 mySemaphore = sem_open (semName , 0); 
-//sem_unlink(semName);
 
+totalChildTime = 0;
 srand(time(NULL));
 int randomnumber = randomNumberGenerator(1,1000000);
 
-//childSeconds = clock -> seconds * NANOSECOND;
-//childNanoseconds = clock -> nanoseconds;
-
-totalChildTime = (clock -> seconds * NANOSECOND) + clock -> nanoseconds; 
-childMaxRunTime = totalChildTime + randomnumber;
-
-fprintf(stderr, "---------Child %d  Max Run Time %d-------------- \n", getpid(),childMaxRunTime);
+totalChildTime = (clock -> seconds * NANOSECOND) + (clock -> nanoseconds + randomnumber); 
 
 while(1)
 {
 	sem_wait(mySemaphore);
-	//sem_getvalue(mySemaphore,&sem_value);
-	//fprintf(stderr, "After Sem Wait %d \n", sem_value);
-	fprintf(stderr, "Passed Wait %d \n", getpid());
-	 if(((clock -> seconds * NANOSECOND) + clock -> nanoseconds) >= childMaxRunTime)
+	 if(((clock -> seconds * NANOSECOND) + clock -> nanoseconds) >= totalChildTime)
 	{
-		fprintf(stderr, "########################################################### %d Inside Critical Section \n", getpid());
 		if(userClock -> childpid == -1)
 		{
+//			userClock -> childpid = getpid();
+			userClock -> seconds = clock -> seconds;
+			userClock -> nanoseconds = clock -> nanoseconds;
 			userClock -> childpid = getpid();
-			userClock -> seconds = childMaxRunTime/ NANOSECOND;
-			userClock -> nanoseconds = childMaxRunTime % NANOSECOND;
-		        fprintf(stderr, "******************************************************  %d Exiting Critical Section \n", getpid());
-			sem_post(mySemaphore);
+ 			sem_post(mySemaphore);
 			break;
 		}
 	} 
-	// fprintf(stderr,"%d Inside Critical Section \n", getpid());
 	sem_post(mySemaphore);
-	//sem_getvalue(mySemaphore,&sem_value);
-        //fprintf(stderr, "After Sem Post %d \n", sem_value);
-	//fprintf(stderr, "Error in Unlocking Semaphore \n");
 }
-
-
 return 0;
+
 }

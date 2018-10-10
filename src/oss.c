@@ -139,7 +139,6 @@ if(userClock == (void *) -1)
 }
 
 mySemaphore = sem_open(SEMNAME, O_CREAT, 0666,1 );
-//sem_unlink(SEMNAME);
 
 clock -> seconds = 0;
 clock -> nanoseconds = 0;
@@ -178,7 +177,7 @@ child_pids = (pid_t *)malloc(s * sizeof(int));
 	}
 
 
-int value = randomNumberGenerator(2000, 8000);
+int value = randomNumberGenerator(1000, 5000);
 
 
 while(1)
@@ -188,35 +187,33 @@ while(1)
 	clock -> seconds += 1;
 	clock -> nanoseconds = 0;
 	}
-	clock -> nanoseconds += value;	
+	clock -> nanoseconds += 1;	
 
-	if( userClock -> childpid != -1)
+	if( userClock -> childpid > 0)
         {
-                fprintf(logfile, "OSS: Child PID %d is terminating at my time %ld.%ld, because it reached %ld.%ld in user \n", userClock -> childpid, clock -> seconds, clock -> nanoseconds, userClock -> seconds, userClock -> nanoseconds);
+                fprintf(stderr, "OSS: Child PID %d is terminating at my time %ld.%ld, because it reached %ld.%ld in user \n", userClock -> childpid, clock -> seconds, clock -> nanoseconds, userClock -> seconds, userClock -> nanoseconds);
                
 	//	waitpid(userClock -> childpid, &status, 0);
-		userClock -> seconds = 0;
-		userClock -> nanoseconds = 0;
 		userClock -> childpid = -1;
-        }
-
-//	waitpid(-1, &status, 0);
-	/* child_pids[j] = fork();
+	
+	/*  child_pids[j] = fork();
          if(child_pids[j] == 0)
          {
-	char ival[10], nval[50],sval[50], shmMsgVal[50];
+        char ival[10], nval[50],sval[50], shmMsgVal[50];
          char *s_val2 = "-s";
-	 char *shmMsgValNew = "-j";
-	 char *kval = "-k";
-	char *arguments2[] = {NULL,s_val2, sval,shmMsgValNew,shmMsgVal,kval, nval, NULL};
-	 arguments2[0]="./user";
+         char *shmMsgValNew = "-j";
+         char *kval = "-k";
+        char *arguments2[] = {NULL,s_val2, sval,shmMsgValNew,shmMsgVal,kval, nval, NULL};
+         arguments2[0]="./user";
          sprintf(arguments2[2], "%d", shmId);
-	 sprintf(arguments2[4], "%d", shmMsgId);
-	 sprintf(arguments2[6], "%d", SEMNAME);
+         sprintf(arguments2[4], "%d", shmMsgId);
+         sprintf(arguments2[6], "%d", SEMNAME);
          execv("./user", arguments2);
          fprintf(stderr, "Error in exec");
-	}
-       	j++;	*/
+        }
+        j++; */
+	
+        }
 
 }
 
