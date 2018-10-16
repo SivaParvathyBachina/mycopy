@@ -16,10 +16,10 @@
 #define NANOSECOND 1000000000
 
 pid_t childpid = 0;
-int i,k,x,k,s,j,status,p;
+int i,m,k,x,k,s = 5,j,status,p;
 pid_t *child_pids;
 key_t myshmKey, shmMsgKey;
-int shmId, shmMsgId, programRunTime;
+int shmId, shmMsgId, programRunTime = 2, position;
 shared_mem *clock; 
 shmMsg *userClock;
 FILE *logfile;
@@ -29,20 +29,22 @@ sem_t *mySemaphore;
 
 void clearSharedMemory() {
 fprintf(stderr, "------------------------------- CLEAN UP ----------------------- \n");
-fprintf(stderr, "Master Clock Value Seconds %d, Nanoseconds %d \n", clock -> seconds, clock -> nanoseconds);
 shmdt((void *)clock);
 shmdt((void *)userClock);
-fprintf(stderr, "Master started detaching its shared memory \n");
+fprintf(stderr,"Cloising File \n");
+fclose(logfile);
+fprintf(stderr, "OSS started detaching OSS Clock Memory \n");
+fprintf(stderr, "OSS started detaching shmMsg Memory \n");
 shmctl(shmId, IPC_RMID, NULL);
 shmctl(shmMsgId, IPC_RMID, NULL);
-sem_destroy(mySemaphore);
-fprintf(stderr, "Master removed shared memory \n");
+sem_unlink(SEMNAME);
+fprintf(stderr, "Unlinked Semaphore \n");
+fprintf(stderr, "OSS Cleared the Shared Memory \n");
 }
 
 void killExistingChildren(){
 for(k=0; k<s; k++)
 {
-//fprintf(stderr, "Child Id %d \n", child_pids[k]);
 if(child_pids[k] != 0)
 {
 fprintf(stderr, "Killing child with Id %d \n", child_pids[k]);
@@ -74,9 +76,18 @@ clearSharedMemory();
 exit(1);
 }
 
+int findElement(int childpid_val)
+{
+	for(m = 0; m < s; m++)
+	{
+		if(child_pids[m] == childpid_val)
+		return m;
+	}
+}
 
 
 int main (int argc, char *argv[]) {
+
 if (argc < 2){ // check for valid number of command line arguments
 fprintf(stderr, "Invalid number of arguments. Please give it in the following format");
 fprintf(stderr, "Usage: %s  -n processess -h [help] -p [error message]", argv[0]);
@@ -86,7 +97,7 @@ while((x = getopt(argc,argv, "hs:l:t:")) != -1)
 switch(x)
 {
 case 'h':
-        fprintf(stderr, "Usage: %s -n processCount -h [help] -s childrenCount\n", argv[0]);
+        fprintf(stderr, "Usage: %s -n processCount -l logfile_name -t z [program_LifeTime] -h [help]\n", argv[0]);
         return 1;
 case 's':
 	s = atoi(optarg);
@@ -116,11 +127,14 @@ if(shmId <0 )
 }
 
 clock = (shared_mem*) shmat(shmId, NULL, 0);
+
 if(clock == (void *) -1)
 {
 	perror("Error in attaching shared memory --- Master \n");
 	exit(1);
 }
+
+fprintf(stderr, "Allocated Shared Memory For OSS Clock \n");
 
 shmMsgKey = ftok(".", 'x');
 shmMsgId = shmget(shmMsgKey, sizeof(shmMsg), IPC_CREAT | 0666);
@@ -138,7 +152,11 @@ if(userClock == (void *) -1)
 	exit(1);
 }
 
+fprintf(stderr, "Allocated Shared Memory For shmMsg \n");
+
 mySemaphore = sem_open(SEMNAME, O_CREAT, 0666,1 );
+
+fprintf(stderr, "Created Semaphore with Name %s \n", SEMNAME);
 
 clock -> seconds = 0;
 clock -> nanoseconds = 0;
@@ -147,13 +165,18 @@ userClock -> nanoseconds = 0;
 userClock -> childpid = -1;
 userClock -> inUse = 0;
 
+fprintf(stderr, "Initialised the OSS and shmMsg Values \n");
+
+if(file_name == NULL)
+file_name = "default";
 logfile = fopen(file_name, "w");
+
+fprintf(stderr, "Opened Log File for writing Output::: %s \n", file_name);
 
 if(logfile == NULL){
 	perror("Error in opening file \n");
 	exit(-1);
 }
-
 
 child_pids = (pid_t *)malloc(s * sizeof(int));
 	for(i=0; i<s ;i++)
@@ -173,33 +196,34 @@ child_pids = (pid_t *)malloc(s * sizeof(int));
 		execv("./user", arguments);
 		fprintf(stderr, "Error in exec");
 		}	
-	j++;
 	}
+j = s;
 
-
-int value = randomNumberGenerator(1000, 5000);
-
-
+int value = randomNumberGenerator(10, 20);
 while(1)
 {
 	if(clock -> nanoseconds >= NANOSECOND) 
 	{
-	clock -> seconds += 1;
+	clock -> seconds += value;
 	clock -> nanoseconds = 0;
 	}
 	clock -> nanoseconds += 1;	
 
 	if( userClock -> childpid > 0)
         {
-                fprintf(stderr, "OSS: Child PID %d is terminating at my time %ld.%ld, because it reached %ld.%ld in user \n", userClock -> childpid, clock -> seconds, clock -> nanoseconds, userClock -> seconds, userClock -> nanoseconds);
+                fprintf(logfile, "OSS: Child PID %d is terminating at my time %ld.%ld, because it reached %ld.%ld in user \n", userClock -> childpid, clock -> seconds, clock -> nanoseconds, userClock -> seconds, userClock -> nanoseconds);
                
-	//	waitpid(userClock -> childpid, &status, 0);
+		waitpid(userClock -> childpid, &status, 0);
+
+		// Created an array of size s and reutilized it for newly created processes.
+		// While a child is being waited for, finding the position of that child in array and replacing that with the new one.
+		position = findElement(userClock -> childpid);
 		userClock -> childpid = -1;
-	
-	/*  child_pids[j] = fork();
-         if(child_pids[j] == 0)
+        	
+	 child_pids[position] = fork();
+         if(child_pids[position]  == 0)
          {
-        char ival[10], nval[50],sval[50], shmMsgVal[50];
+	 char ival[10], nval[50],sval[50], shmMsgVal[50];
          char *s_val2 = "-s";
          char *shmMsgValNew = "-j";
          char *kval = "-k";
@@ -207,12 +231,10 @@ while(1)
          arguments2[0]="./user";
          sprintf(arguments2[2], "%d", shmId);
          sprintf(arguments2[4], "%d", shmMsgId);
-         sprintf(arguments2[6], "%d", SEMNAME);
+         sprintf(arguments2[6], "%s", SEMNAME);
          execv("./user", arguments2);
          fprintf(stderr, "Error in exec");
         }
-        j++; */
-	
         }
 
 }

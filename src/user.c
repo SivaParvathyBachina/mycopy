@@ -31,15 +31,7 @@ int randomNumberGenerator(int min, int max)
 
 int main (int argc, char *argv[]) {
 
-//int i;
-//for ( i = 0; i < argc; i++) 
-//        fprintf(stderr, "%d \n", argv[i] ); 
-
 childpid = getpid();
-//fprintf(stderr, "Child Created \n Child started execution in  worker::: %ld \n", childpid);
-//fprintf(stderr, "*******************************************\n");
-
-//fprintf(stderr, "Child with pid ######## %d \n", childpid);
 
 while((x = getopt(argc,argv, "n:s:j:k:")) != -1)
 switch(x)
@@ -88,14 +80,14 @@ int randomnumber = randomNumberGenerator(1,1000000);
 
 totalChildTime = (clock -> seconds * NANOSECOND) + (clock -> nanoseconds + randomnumber); 
 
+int value;
 while(1)
 {
-	sem_wait(mySemaphore);
+	 sem_wait(mySemaphore);
 	 if(((clock -> seconds * NANOSECOND) + clock -> nanoseconds) >= totalChildTime)
 	{
 		if(userClock -> childpid == -1)
 		{
-//			userClock -> childpid = getpid();
 			userClock -> seconds = clock -> seconds;
 			userClock -> nanoseconds = clock -> nanoseconds;
 			userClock -> childpid = getpid();
@@ -105,6 +97,7 @@ while(1)
 	} 
 	sem_post(mySemaphore);
 }
+
 return 0;
 
 }

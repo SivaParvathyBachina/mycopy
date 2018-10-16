@@ -1,0 +1,27 @@
+The structure in hoare server is 
+		
+		bachina.3  --->   Makefile
+				  src   --------> oss.c, user.c, shared_mem.h
+				   Readme
+				   Logfile With the User Specified Name.
+
+Sample Execution Format: ./master -s ChildrenCount -l logfile_Name -t program_Lifetime
+========================================================================
+
+There are 2 files named oss.c and user.c
+
+SHared_mem.h is a header file that holds the structure of the oss clock the shmMsg.
+
+shmMsg contains the seconds, nanoseconds, chilpid (to store the value of every child's pid) and inUse Flag. 
+
+To run the project: cd to bachina.3 folder: make all, All the executables will be generated.
+
+and then give the command ./master -s childCount -l logfile_name -t terminationTime
+
+To remove the object files give command,  make clean
+
+All the outputs for different conditions are written into the ANswers.
+
+EVery child will write its termination time as mentioned in the project pdf to the logfile given. 
+
+All the files are pushed to github. 
